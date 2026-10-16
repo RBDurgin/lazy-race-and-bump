@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project status
 
-**Lazy Race and Bump** is a browser race-and-bump board game: a shortened, "lazy" take on classic pawn-racing games. Phases 0 (tooling) and 1 (core engine, base rules only) are done: `src/engine/` is complete and tested, and `src/App.tsx` is still a placeholder. Next up is Phase 2 (playable UI). Design docs:
+**Lazy Race and Bump** is a browser race-and-bump board game: a shortened, "lazy" take on classic pawn-racing games. Phases 0–2 are done: the base-rules engine (`src/engine/`), the Easy bot (`src/bots/`) and a playable UI (`src/ui/`: setup screen, SVG board, click-to-move, event log, game-over screen). Next up is Phase 3 (lazy mechanics). Design docs:
 
 - `docs/PLAN.md`: the approved phased plan (Phase 0 setup → Phase 5 polish). Work through it phase by phase.
 - `docs/RULES.md`: the rules. This is the source of truth for game behavior. When the engine and the rules disagree, fix one of them so they match. Don't let them drift apart.
@@ -35,4 +35,7 @@ Vite + React + TypeScript (`strict`), Vitest, ESLint (flat config) + Prettier. G
   - `testing.ts` has `scenario()` for building positions in tests. `simulation.test.ts` plays 1,000 random games as a smoke test.
 - **Lazy mechanics** (naps, couches, snooze) live in `lazy.ts`, and each one is gated by a `Settings` toggle. With every toggle off, the engine must play the plain base game. Tests rely on that.
 - **`src/bots/`**: each bot is a function `(state, card) => Move` behind a common `Bot` interface. Autopilot's "full lazy mode" reuses the Medium bot, so it's not a separate code path.
-- **`src/ui/`**: React components with an SVG board. A `useReducer` hook wraps the engine, and timed effects drive bot turns and autopilot. The UI never reimplements rules; it asks the engine for legal moves.
+- **`src/ui/`**: React components with an SVG board. The UI never reimplements rules; it asks the engine for legal moves.
+  - `gameReducer.ts` is the pure `useReducer` wrapper: one action per engine step (`draw`, `play`, `pass`), plus the event log. `botAction()` picks a bot's next action; `Game.tsx` dispatches it on a timer. Keep logic here (tested as `.ts`) rather than in components.
+  - `layout.ts` maps positions to SVG coordinates on an 11×11 grid. Each side is laid out as if it were the top row, then rotated.
+  - `describe.ts` holds all user-facing text for cards, moves and events.
