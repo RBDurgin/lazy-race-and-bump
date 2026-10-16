@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useReducer, useState } from 'react'
 import { easyBot } from '../bots/easy'
 import { legalMoves } from '../engine/game'
+import { canSnooze } from '../engine/lazy'
 import { destinationOf } from '../engine/moves'
 import { samePos } from '../engine/board'
 import { currentColor } from '../engine/state'
@@ -89,6 +90,7 @@ export function Game({ config, onPlayAgain, onNewSetup }: GameProps) {
         <Board
           game={game}
           movable={movable}
+          napped={ui.napped}
           selected={active}
           targets={targets}
           onPawnClick={onPawnClick}
@@ -115,9 +117,11 @@ export function Game({ config, onPlayAgain, onNewSetup }: GameProps) {
           drawAgain={drawAgain}
           moves={choice ?? moves}
           choosing={choice !== null}
+          canSnooze={isHumanTurn && canSnooze(game)}
           onDraw={() => act({ type: 'draw' })}
           onPass={() => act({ type: 'pass' })}
           onPlay={(move) => act({ type: 'play', move })}
+          onSnooze={() => act({ type: 'snooze' })}
         />
         <EventLog log={log} />
       </div>

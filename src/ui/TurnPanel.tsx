@@ -1,5 +1,6 @@
 import type { Card, Color, GameState, Move } from '../engine/types'
-import { CARD_TEXT, COLOR_NAMES, moveLabel, movePreview } from './describe'
+import { CARD_TEXT, COLOR_NAMES, moveLabel, movePreview, pawnName } from './describe'
+import { isDrowsy } from '../engine/lazy'
 import { moveKey } from '../engine/moves'
 
 interface TurnPanelProps {
@@ -10,9 +11,11 @@ interface TurnPanelProps {
   /** Moves to offer as buttons: all legal moves, or the ones sharing a clicked square. */
   moves: Move[]
   choosing: boolean
+  canSnooze: boolean
   onDraw: () => void
   onPass: () => void
   onPlay: (move: Move) => void
+  onSnooze: () => void
 }
 
 function CardFace({ card }: { card: Card | null }) {
@@ -25,8 +28,15 @@ function CardFace({ card }: { card: Card | null }) {
   )
 }
 
+function drawLabel(game: GameState, human: Color, drawAgain: boolean): string {
+  const kept = game.kept[human]
+  if (kept) return `Pick up the ${kept} you kept`
+  return drawAgain ? 'You played a 2: draw again' : 'Draw a card'
+}
+
 export function TurnPanel(props: TurnPanelProps) {
   const { game, human, isHumanTurn, drawAgain, moves, choosing } = props
+  const drowsy = game.pawns.filter((p) => p.color === human && isDrowsy(game, p.id))
   const color = game.players[game.current]
   const whose =
     game.phase === 'over'
@@ -46,7 +56,7 @@ export function TurnPanel(props: TurnPanelProps) {
 
       {isHumanTurn && game.phase === 'draw' && (
         <button className="primary" onClick={props.onDraw} autoFocus>
-          {drawAgain ? 'You played a 2: draw again' : 'Draw a card'}
+          {drawLabel(game, human, drawAgain)}
         </button>
       )}
       {isHumanTurn && game.phase === 'move' && moves.length === 0 && (
@@ -75,6 +85,17 @@ export function TurnPanel(props: TurnPanelProps) {
             })}
           </ul>
         </>
+      )}
+      {isHumanTurn && game.phase === 'move' && drowsy.length > 0 && (
+        <p className="hint">
+          💤 {drowsy.map((p) => pawnName(p.id)).join(' and ')} {drowsy.length === 1 ? 'is' : 'are'}{' '}
+          asleep on the couch and can only move if nothing else can.
+        </p>
+      )}
+      {isHumanTurn && props.canSnooze && (
+        <button className="snooze" onClick={props.onSnooze}>
+          ⏰ Snooze: skip this turn, keep the {game.card} (once per game)
+        </button>
       )}
       {!isHumanTurn && game.phase !== 'over' && <p className="hint">Thinking…</p>}
     </section>

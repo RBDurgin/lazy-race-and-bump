@@ -10,13 +10,14 @@ export const PAWNS_PER_PLAYER = 2
 const SAFETY_ENTRY_OFFSET = 1
 const START_EXIT_OFFSET = 3
 const SLIDE_START_OFFSET = 5
+const COUCH_OFFSET = 9
 
 export const START: PawnPos = { kind: 'start' }
 export const HOME: PawnPos = { kind: 'home' }
 export const track = (square: number): PawnPos => ({ kind: 'track', square })
 export const safety = (index: number): PawnPos => ({ kind: 'safety', index })
 
-const wrap = (square: number) => ((square % TRACK_LENGTH) + TRACK_LENGTH) % TRACK_LENGTH
+export const wrap = (square: number) => ((square % TRACK_LENGTH) + TRACK_LENGTH) % TRACK_LENGTH
 
 export function sideStart(color: Color): number {
   return COLORS.indexOf(color) * SIDE_LENGTH
@@ -46,6 +47,13 @@ export const SLIDES: readonly Slide[] = COLORS.map((color) => {
 /** The slide that begins on `square`, if any. */
 export function slideAt(square: number): Slide | undefined {
   return SLIDES.find((s) => s.start === square)
+}
+
+/** One couch square per side. */
+export const COUCHES: readonly number[] = COLORS.map((color) => sideStart(color) + COUCH_OFFSET)
+
+export function isCouch(square: number): boolean {
+  return COUCHES.includes(square)
 }
 
 export function samePos(a: PawnPos, b: PawnPos): boolean {

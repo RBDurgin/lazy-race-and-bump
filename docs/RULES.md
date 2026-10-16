@@ -1,6 +1,6 @@
 # Lazy Race and Bump: Rules
 
-_Draft v0.1. Numbers here (nap odds, board size, deck mix) will be tuned in Phase 3 using bot simulations._
+_Draft v0.2. The lazy rules were settled in Phase 3. With random-move bots, games run about 37 turns per player with the base rules and about 45 with every lazy rule on (a "turn" here is one player's turn, and a `2` plus its extra draw count as one)._
 
 ## Goal
 
@@ -26,6 +26,7 @@ Track squares are numbered 0–39 clockwise. Colors sit clockwise in the order r
 | +1     | Safety entry: moving forward from here goes into that color's safety zone |
 | +3     | Start exit: where a pawn leaving Start lands                              |
 | +5..+8 | That color's slide (start at +5, end at +8)                               |
+| +9     | Couch (see Lazy rules)                                                    |
 
 From its Start exit, a pawn needs 38 steps to reach its safety entry, then 3 safety squares and 1 more step into Home (42 steps in all). A pawn that moves backward past its Start exit can reach its safety zone in just a few steps.
 
@@ -72,19 +73,30 @@ Each of these can be switched off in Settings.
 
 ### 💤 Naps
 
-Each time a pawn is about to move by a number, roll a hidden die. On a 1-in-6 chance the pawn **naps** and moves only **half the value, rounded down**. A nap on a `1` means the pawn doesn't move at all. Leaving Start, `Bump!` and swaps never nap.
+Each time a pawn is about to move by a number (forward or backward), roll a hidden die. On a 1-in-6 chance the pawn **naps** and moves only **half the value, rounded down**. Leaving Start, `Bump!` and swaps never nap.
+
+- You choose your move first, then the die is rolled.
+- A nap on a `1` (or the `10`'s 1 backward) means the pawn doesn't move at all.
+- If the shorter move would end on your own pawn, the pawn doesn't move at all.
+- Wherever a napping pawn ends up is a normal landing: it bumps, slides and can land on a couch.
 
 ### 🛋️ Couches
 
 A pawn that ends its move on a couch square **falls asleep**:
 
-- On your next turn you can't move that pawn unless it is your only legal move. Then it wakes up.
-- While asleep it's an easy target: an opponent ending a move **on or next to** it bumps it.
-- It wakes up after your next turn either way.
+- On your next turn you can't move that pawn unless moving your sleeping pawns is all you can legally do. If it moves, it wakes up.
+- While asleep it's an easy target: an opponent ending a move **on or next to** it (on the track squares either side) bumps it. Where a pawn ends up after a slide is where it ended its move. Your own pawns never bump your sleepers.
+- It wakes up after your next turn either way, even if you passed or snoozed.
+- Falling asleep on the first move of a `2` doesn't stop you moving that pawn with the extra draw: it's still the same turn.
+- A bumped sleeper wakes up back in Start. A sleeper swapped by an `11` stays asleep on its new square, and the swapping pawn doesn't bump it for being next door.
 
 ### ⏰ Snooze button
 
 Once per game, each player may skip a turn on purpose and keep the card they drew for their next turn instead of drawing.
+
+- You snooze after drawing, with any card, even one you'd have to play.
+- On your next turn you pick up the kept card instead of drawing, and must play it as usual. A kept `2` still lets you draw again.
+- A snooze can come on the extra draw after a `2`. It ends your turn.
 
 ## Autopilot (for lazy humans)
 

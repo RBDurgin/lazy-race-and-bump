@@ -1,7 +1,7 @@
 // Wraps the engine for React: one reducer action per engine step, plus a running event log.
-import { createGame, drawCard, legalMoves, passTurn, playMove } from '../engine/game'
+import { createGame, drawCard, legalMoves, passTurn, playMove, snoozeTurn } from '../engine/game'
 import { currentColor } from '../engine/state'
-import type { Color, GameEvent, GameState, Move, Result } from '../engine/types'
+import type { Color, GameEvent, GameState, Move, Result, Settings } from '../engine/types'
 import type { Bot } from '../bots/types'
 import { eventText, moveLabel } from './describe'
 
@@ -10,22 +10,26 @@ export interface GameConfig {
   /** Every color in the game, including the human's. */
   players: Color[]
   seed: number
+  settings: Settings
 }
 
 export interface LogEntry {
   id: number
   color: Color | null
   text: string
-  tone: 'plain' | 'bump' | 'good'
+  tone: 'plain' | 'bump' | 'good' | 'lazy'
 }
 
 export interface UiState {
   config: GameConfig
   game: GameState
   log: LogEntry[]
+  /** The pawn that napped on the latest move, for the 💤 on the board. */
+  napped: string | null
 }
 
-export type Action = { type: 'draw' } | { type: 'play'; move: Move } | { type: 'pass' }
+export type Action =
+  { type: 'draw' } | { type: 'play'; move: Move } | { type: 'pass' } | { type: 'snooze' }
 
 const LOG_LIMIT = 200
 
@@ -37,12 +41,18 @@ export function newSeed(): number {
 export function initUi(config: GameConfig): UiState {
   // The human always goes first; createGame seats everyone else clockwise from there.
   const players = [config.human, ...config.players.filter((c) => c !== config.human)]
-  return { config, game: createGame({ players, seed: config.seed }), log: [] }
+  return {
+    config,
+    game: createGame({ players, seed: config.seed, settings: config.settings }),
+    log: [],
+    napped: null,
+  }
 }
 
 function toneOf(e: GameEvent): LogEntry['tone'] {
   if (e.type === 'bump') return 'bump'
   if (e.type === 'home' || e.type === 'win') return 'good'
+  if (e.type === 'nap' || e.type === 'sleep' || e.type === 'snooze') return 'lazy'
   return 'plain'
 }
 
@@ -54,7 +64,15 @@ function withLog(ui: UiState, result: Result, color: Color, lead?: string): UiSt
     const text = eventText(e)
     if (text) lines.push({ id: ++id, color, text, tone: toneOf(e) })
   }
-  return { ...ui, game: result.state, log: [...ui.log, ...lines].slice(-LOG_LIMIT) }
+  // A draw leaves the last nap on show; anything else replaces it.
+  const nap = result.events.find((e) => e.type === 'nap')
+  const napped = result.events.some((e) => e.type === 'draw') ? ui.napped : (nap?.pawn ?? null)
+  return {
+    game: result.state,
+    config: ui.config,
+    napped,
+    log: [...ui.log, ...lines].slice(-LOG_LIMIT),
+  }
 }
 
 export function uiReducer(ui: UiState, action: Action): UiState {
@@ -66,6 +84,8 @@ export function uiReducer(ui: UiState, action: Action): UiState {
       return withLog(ui, playMove(ui.game, action.move), color, moveLabel(action.move) + '.')
     case 'pass':
       return withLog(ui, passTurn(ui.game), color)
+    case 'snooze':
+      return withLog(ui, snoozeTurn(ui.game), color)
   }
 }
 

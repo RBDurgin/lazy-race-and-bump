@@ -1,6 +1,6 @@
 // Helpers for engine tests: build a game, then place pawns and hand out a card.
 import { createGame } from './game'
-import type { Card, Color, GameState, PawnPos } from './types'
+import type { Card, Color, GameState, PawnPos, Settings } from './types'
 
 export interface Scenario {
   players?: Color[]
@@ -10,6 +10,10 @@ export interface Scenario {
   card?: Card
   drawPile?: Card[]
   seed?: number
+  /** Lazy toggles to turn on; all off by default. */
+  settings?: Partial<Settings>
+  /** Sleeping pawns, by id: the turn each fell asleep on (the game starts on turn 0). */
+  asleep?: Record<string, number>
 }
 
 export function scenario({
@@ -18,8 +22,10 @@ export function scenario({
   card,
   drawPile,
   seed = 1,
+  settings,
+  asleep = {},
 }: Scenario): GameState {
-  const state = createGame({ players, seed })
+  const state = createGame({ players, seed, settings })
   for (const id of Object.keys(at)) {
     if (!state.pawns.some((p) => p.id === id)) throw new Error(`No pawn ${id} in this game`)
   }
@@ -29,6 +35,7 @@ export function scenario({
     drawPile: drawPile ?? state.drawPile,
     card: card ?? null,
     phase: card ? 'move' : 'draw',
+    asleep,
   }
 }
 

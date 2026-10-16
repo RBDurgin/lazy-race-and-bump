@@ -5,6 +5,7 @@ import { Setup } from './ui/Setup'
 
 function App() {
   const [config, setConfig] = useState<GameConfig | null>(null)
+  const [last, setLast] = useState<GameConfig | null>(null)
 
   return (
     <main>
@@ -17,10 +18,13 @@ function App() {
           key={config.seed}
           config={config}
           onPlayAgain={() => setConfig({ ...config, seed: newSeed() })}
-          onNewSetup={() => setConfig(null)}
+          onNewSetup={() => {
+            setLast(config)
+            setConfig(null)
+          }}
         />
       ) : (
-        <Setup onStart={setConfig} />
+        <Setup last={last} onStart={setConfig} />
       )}
     </main>
   )

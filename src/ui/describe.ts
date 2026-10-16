@@ -1,7 +1,7 @@
 // Human-readable text for cards, moves and engine events.
 import { applyMove } from '../engine/apply'
 import { pawnById } from '../engine/state'
-import type { Card, Color, GameEvent, GameState, Move } from '../engine/types'
+import type { Card, Color, GameEvent, GameState, Move, Settings } from '../engine/types'
 
 export const COLOR_NAMES: Readonly<Record<Color, string>> = {
   red: 'Red',
@@ -21,6 +21,24 @@ export const CARD_TEXT: Readonly<Record<Card, string>> = {
   '11': "Move 11 forward, or swap with an opponent's pawn on the track.",
   'Bump!': "Move a pawn from Start onto an opponent's pawn and send it back to Start.",
 }
+
+export const LAZY_RULES: readonly { key: keyof Settings; name: string; text: string }[] = [
+  {
+    key: 'naps',
+    name: '💤 Naps',
+    text: 'One move in six, a pawn naps and goes only half as far.',
+  },
+  {
+    key: 'couches',
+    name: '🛋️ Couches',
+    text: 'Land on a couch and fall asleep: you sit out a turn, and anyone landing next to you bumps you.',
+  },
+  {
+    key: 'snooze',
+    name: '⏰ Snooze',
+    text: 'Once per game, skip a turn and keep your card for later.',
+  },
+]
 
 /** `red-0` → `Red 1`. */
 export function pawnName(id: string): string {
@@ -55,6 +73,7 @@ export function movePreview(state: GameState, move: Move): string {
       ]
     }
     if (e.type === 'home') return ['reaches Home']
+    if (e.type === 'sleep') return ['falls asleep on the couch']
     return []
   })
   return notes.join(', ')
@@ -66,7 +85,9 @@ export function eventText(e: GameEvent): string | null {
     case 'reshuffle':
       return 'The discard pile was shuffled into a new draw pile.'
     case 'draw':
-      return `${COLOR_NAMES[e.color]} drew ${e.card === 'Bump!' ? 'a Bump!' : `a ${e.card}`}.`
+      return e.kept
+        ? `${COLOR_NAMES[e.color]} picked up the ${e.card} they kept.`
+        : `${COLOR_NAMES[e.color]} drew ${e.card === 'Bump!' ? 'a Bump!' : `a ${e.card}`}.`
     case 'pass':
       return `${COLOR_NAMES[e.color]} had no legal move and lost the turn.`
     case 'slide':
@@ -77,6 +98,16 @@ export function eventText(e: GameEvent): string | null {
       return `🏠 ${pawnName(e.pawn)} made it Home.`
     case 'win':
       return `🏆 ${COLOR_NAMES[e.color]} wins!`
+    case 'nap':
+      return e.moved === 0
+        ? `💤 ${pawnName(e.pawn)} napped and didn't move at all.`
+        : `💤 ${pawnName(e.pawn)} napped and only moved ${e.moved} of ${e.steps}.`
+    case 'sleep':
+      return `🛋️ ${pawnName(e.pawn)} fell asleep on the couch.`
+    case 'wake':
+      return `${pawnName(e.pawn)} woke up.`
+    case 'snooze':
+      return `⏰ ${COLOR_NAMES[e.color]} hit snooze and kept the ${e.card} for next turn.`
     case 'move':
     case 'swap':
       return null

@@ -1,5 +1,5 @@
 import type { KeyboardEvent } from 'react'
-import { SAFETY_LENGTH, TRACK_LENGTH, samePos, startExit } from '../engine/board'
+import { COUCHES, SAFETY_LENGTH, TRACK_LENGTH, samePos, startExit } from '../engine/board'
 import {
   COLORS,
   type Color,
@@ -31,6 +31,8 @@ export interface Target {
 interface BoardProps {
   game: GameState
   movable: ReadonlySet<string>
+  /** The pawn that napped on the latest move, if any. */
+  napped: string | null
   selected: string | null
   /** Destinations for the selected pawn, each with the move(s) that land there. */
   targets: Target[]
@@ -65,6 +67,7 @@ function activate(handler: () => void) {
 export function Board({
   game,
   movable,
+  napped,
   selected,
   targets,
   onPawnClick,
@@ -104,6 +107,20 @@ export function Board({
           />
         )
       })}
+
+      {game.settings.couches &&
+        COUCHES.map((sq) => {
+          const p = trackPoint(sq)
+          return (
+            <g key={sq} className="couch" transform={`translate(${p.x} ${p.y})`}>
+              <title>Couch</title>
+              <rect x={-0.27} y={-0.2} width={0.54} height={0.2} rx={0.06} />
+              <rect x={-0.27} y={-0.02} width={0.54} height={0.16} rx={0.04} />
+              <rect x={-0.34} y={-0.12} width={0.12} height={0.3} rx={0.05} />
+              <rect x={0.22} y={-0.12} width={0.12} height={0.3} rx={0.05} />
+            </g>
+          )
+        })}
 
       {SLIDE_SHAPES.map((s) => (
         <g key={s.color} className="slide" style={{ color: colorVar(s.color) }}>
@@ -162,18 +179,30 @@ export function Board({
       {game.pawns.map((pawn) => {
         const p = pawnPoint(pawn.color, pawn.pos, slotOf(game, pawn))
         const canMove = movable.has(pawn.id)
-        const classes = ['pawn', canMove && 'movable', pawn.id === selected && 'selected']
+        const asleep = pawn.id in game.asleep
+        const classes = [
+          'pawn',
+          canMove && 'movable',
+          pawn.id === selected && 'selected',
+          asleep && 'asleep',
+        ]
+        const label = asleep ? `${pawnName(pawn.id)}, asleep` : pawnName(pawn.id)
         return (
           <g
             key={pawn.id}
             className={classes.filter(Boolean).join(' ')}
             transform={`translate(${p.x} ${p.y})`}
-            aria-label={pawnName(pawn.id)}
+            aria-label={label}
             {...activate(() => onPawnClick(pawn))}
           >
             {pawn.id === selected && <circle className="halo" r={0.45} />}
             <circle r={0.32} style={{ fill: colorVar(pawn.color) }} />
             <text y={0.02}>{Number(pawn.id.split('-')[1]) + 1}</text>
+            {(asleep || pawn.id === napped) && (
+              <text className={asleep ? 'zzz' : 'zzz napped'} x={0.32} y={-0.3}>
+                Zz
+              </text>
+            )}
           </g>
         )
       })}

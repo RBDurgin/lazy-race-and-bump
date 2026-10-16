@@ -1,6 +1,7 @@
 import { applyMove } from './apply'
 import { PAWNS_PER_PLAYER, START } from './board'
 import { buildDeck, drawFrom } from './deck'
+import { canSnooze, napCheck, wakeSleepers } from './lazy'
 import { getLegalMoves, moveKey } from './moves'
 import { shuffle } from './rng'
 import { currentColor, pawnsOf } from './state'
@@ -54,6 +55,9 @@ export function createGame({ players, seed, settings }: NewGame): GameState {
     winner: null,
     rng,
     turn: 0,
+    asleep: {},
+    snoozed: [],
+    kept: {},
   }
 }
 
@@ -61,15 +65,26 @@ function assertPhase(state: GameState, phase: Phase) {
   if (state.phase !== phase) throw new Error(`Expected phase '${phase}', got '${state.phase}'`)
 }
 
+/** Draws a card, or picks up the card the current player kept with a snooze. */
 export function drawCard(state: GameState): Result {
   assertPhase(state, 'draw')
+  const color = currentColor(state)
+  const keptCard = state.kept[color]
+  if (keptCard) {
+    const kept = { ...state.kept }
+    delete kept[color]
+    return {
+      state: { ...state, card: keptCard, kept, phase: 'move' },
+      events: [{ type: 'draw', color, card: keptCard, kept: true }],
+    }
+  }
   const { card, drawPile, discardPile, rng, reshuffled } = drawFrom(
     state.drawPile,
     state.discardPile,
     state.rng,
   )
   const events: GameEvent[] = reshuffled ? [{ type: 'reshuffle' }] : []
-  events.push({ type: 'draw', color: currentColor(state), card })
+  events.push({ type: 'draw', color, card })
   return { state: { ...state, card, drawPile, discardPile, rng, phase: 'move' }, events }
 }
 
@@ -82,8 +97,11 @@ export function playMove(state: GameState, move: Move): Result {
   assertPhase(state, 'move')
   const key = moveKey(move)
   if (!legalMoves(state).some((m) => moveKey(m) === key)) throw new Error(`Illegal move: ${key}`)
-  const applied = applyMove(state, move)
-  return finishCard(applied.state, applied.events)
+  const nap = napCheck(state, move)
+  const napped = { ...state, rng: nap.rng }
+  if (!nap.move) return finishCard(napped, nap.events)
+  const applied = applyMove(napped, nap.move)
+  return finishCard(applied.state, [...nap.events, ...applied.events])
 }
 
 /** Forfeits the card. Only allowed when there's no legal move. */
@@ -91,6 +109,23 @@ export function passTurn(state: GameState): Result {
   assertPhase(state, 'move')
   if (legalMoves(state).length > 0) throw new Error('Cannot pass while a legal move exists')
   return finishCard(state, [{ type: 'pass', color: currentColor(state), card: state.card! }])
+}
+
+/** Skips the turn on purpose, keeping the held card for next turn. Once per game per player. */
+export function snoozeTurn(state: GameState): Result {
+  assertPhase(state, 'move')
+  if (!canSnooze(state)) throw new Error('Cannot snooze now')
+  const color = currentColor(state)
+  const card = state.card!
+  return endTurn(
+    {
+      ...state,
+      card: null,
+      kept: { ...state.kept, [color]: card },
+      snoozed: [...state.snoozed, color],
+    },
+    [{ type: 'snooze', color, card }],
+  )
 }
 
 /** Discards the held card, then checks for a win, a `2`'s extra draw, or the next player. */
@@ -106,13 +141,20 @@ function finishCard(state: GameState, events: GameEvent[]): Result {
     }
   }
   if (card === '2') return { state: { ...next, phase: 'draw' }, events }
+  return endTurn(next, events)
+}
+
+/** Wakes the current player's sleepers and passes play to the next player. */
+function endTurn(state: GameState, events: GameEvent[]): Result {
+  const woke = wakeSleepers(state)
   return {
     state: {
-      ...next,
+      ...state,
+      asleep: woke.asleep,
       phase: 'draw',
       current: (state.current + 1) % state.players.length,
       turn: state.turn + 1,
     },
-    events,
+    events: [...events, ...woke.events],
   }
 }

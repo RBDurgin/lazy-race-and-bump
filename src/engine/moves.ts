@@ -1,6 +1,7 @@
-import { samePos, startExit, track, walk } from './board'
-import { currentColor, pawnById, pawnsOf } from './state'
-import type { Card, Color, GameState, Move, PawnPos } from './types'
+import { startExit, track, walk } from './board'
+import { onlyAwakeMoves } from './lazy'
+import { canLand, currentColor, pawnById, pawnsOf } from './state'
+import type { Card, GameState, Move, PawnPos } from './types'
 
 interface CardRule {
   leaveStart?: boolean
@@ -20,11 +21,6 @@ export const CARD_RULES: Readonly<Record<Card, CardRule>> = {
   '10': { forward: 10, backward: 1 },
   '11': { forward: 11, swap: true },
   'Bump!': { bump: true },
-}
-
-/** A color may end a move anywhere except on its own pawn. Home holds any number of pawns. */
-function canLand(state: GameState, color: Color, pos: PawnPos): boolean {
-  return pos.kind === 'home' || !state.pawns.some((p) => p.color === color && samePos(p.pos, pos))
 }
 
 /** Every legal move for the current player holding `card`. Empty means they must pass. */
@@ -60,7 +56,7 @@ export function getLegalMoves(state: GameState, card: Card): Move[] {
       for (const t of targets) moves.push({ kind: 'swap', pawn: pawn.id, target: t.id })
     }
   }
-  return moves
+  return onlyAwakeMoves(state, moves)
 }
 
 /** Where the moving pawn lands, before any slide. Assumes the move is legal. */

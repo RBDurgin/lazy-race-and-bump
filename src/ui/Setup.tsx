@@ -1,17 +1,28 @@
 import { useState } from 'react'
-import { COLORS, type Color } from '../engine/types'
-import { COLOR_NAMES } from './describe'
+import { COLORS, type Color, type Settings } from '../engine/types'
+import { COLOR_NAMES, LAZY_RULES } from './describe'
 import { newSeed, opponentColors, type GameConfig } from './gameReducer'
 
-export function Setup({ onStart }: { onStart: (config: GameConfig) => void }) {
-  const [human, setHuman] = useState<Color>('red')
-  const [count, setCount] = useState(2)
+const ALL_LAZY: Settings = { naps: true, couches: true, snooze: true }
+
+/** The setup form. `last` pre-fills it with the previous game's choices. */
+export function Setup({
+  last,
+  onStart,
+}: {
+  last: GameConfig | null
+  onStart: (config: GameConfig) => void
+}) {
+  const [human, setHuman] = useState<Color>(last?.human ?? 'red')
+  const [count, setCount] = useState(last?.players.length ?? 2)
+  const [settings, setSettings] = useState<Settings>(last?.settings ?? ALL_LAZY)
 
   const start = () =>
     onStart({
       human,
       players: [human, ...opponentColors(human, count - 1, COLORS)],
       seed: newSeed(),
+      settings,
     })
 
   return (
@@ -39,6 +50,24 @@ export function Setup({ onStart }: { onStart: (config: GameConfig) => void }) {
               <input type="radio" name="color" checked={human === c} onChange={() => setHuman(c)} />
               <span className="swatch" style={{ background: `var(--${c})` }} />
               {COLOR_NAMES[c]}
+            </label>
+          ))}
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>Lazy rules</legend>
+        <div className="lazy-rules">
+          {LAZY_RULES.map((rule) => (
+            <label key={rule.key} className="choice">
+              <input
+                type="checkbox"
+                checked={settings[rule.key]}
+                onChange={(e) => setSettings({ ...settings, [rule.key]: e.target.checked })}
+              />
+              <span>
+                <strong>{rule.name}</strong>
+                <span className="hint"> {rule.text}</span>
+              </span>
             </label>
           ))}
         </div>

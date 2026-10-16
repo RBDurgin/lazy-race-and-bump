@@ -15,6 +15,7 @@
   --target: #12a150;
   --bump: #c0392b;
   --good: #1e8449;
+  --couch: #9a7cc4;
 
   --red: #d4483b;
   --blue: #3a74d0;
@@ -41,6 +42,7 @@
     --target: #3ddc84;
     --bump: #f07163;
     --good: #5fd08a;
+    --couch: #b49ce0;
     --red-tint: #5a2b26;
     --blue-tint: #243a5c;
     --yellow-tint: #574719;
@@ -162,6 +164,19 @@ legend {
 .choice:has(input:checked) {
   border-color: var(--accent);
   outline: 1px solid var(--accent);
+}
+
+.lazy-rules {
+  display: grid;
+  gap: 8px;
+}
+
+.lazy-rules .choice {
+  align-items: flex-start;
+}
+
+.lazy-rules .hint {
+  margin: 0;
 }
 
 /* Game layout */
@@ -325,6 +340,40 @@ legend {
   font-size: 1.8rem;
 }
 
+.couch rect {
+  fill: var(--couch);
+  stroke: var(--panel);
+  stroke-width: 0.02;
+}
+
+.pawn text.zzz {
+  fill: var(--couch);
+  stroke: var(--panel);
+  stroke-width: 0.06;
+  paint-order: stroke;
+  font-size: 0.3px;
+  font-style: italic;
+  font-weight: 800;
+}
+
+.pawn text.napped {
+  animation: drift 1.6s ease-out forwards;
+}
+
+.pawn.asleep > circle {
+  opacity: 0.7;
+}
+
+@keyframes drift {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.25;
+    transform: translate(0.1px, -0.2px);
+  }
+}
+
 /* Turn panel */
 .card {
   display: grid;
@@ -372,6 +421,11 @@ legend {
   width: 100%;
 }
 
+.turn-panel > button.snooze {
+  margin-top: 12px;
+  font-size: 0.9rem;
+}
+
 .move-list {
   list-style: none;
   padding: 0;
@@ -408,6 +462,11 @@ legend {
 .tone-bump {
   color: var(--bump);
   font-weight: 600;
+}
+
+.tone-lazy {
+  color: var(--muted);
+  font-style: italic;
 }
 
 .tone-good {
