@@ -1,6 +1,7 @@
 import { useState } from 'react'
+import type { BotLevel } from '../bots'
 import { COLORS, type Color, type Settings } from '../engine/types'
-import { COLOR_NAMES, LAZY_RULES } from './describe'
+import { BOT_LEVELS, COLOR_NAMES, LAZY_RULES } from './describe'
 import { newSeed, opponentColors, type GameConfig } from './gameReducer'
 
 const ALL_LAZY: Settings = { naps: true, couches: true, snooze: true }
@@ -16,6 +17,8 @@ export function Setup({
   const [human, setHuman] = useState<Color>(last?.human ?? 'red')
   const [count, setCount] = useState(last?.players.length ?? 2)
   const [settings, setSettings] = useState<Settings>(last?.settings ?? ALL_LAZY)
+  const [bot, setBot] = useState<BotLevel>(last?.bot ?? 'medium')
+  const [autoMove, setAutoMove] = useState(last?.autoMove ?? true)
 
   const start = () =>
     onStart({
@@ -23,6 +26,8 @@ export function Setup({
       players: [human, ...opponentColors(human, count - 1, COLORS)],
       seed: newSeed(),
       settings,
+      bot,
+      autoMove,
     })
 
   return (
@@ -39,8 +44,28 @@ export function Setup({
           ))}
         </div>
         <p className="hint">
-          You against {count - 1} Easy {count === 2 ? 'bot' : 'bots'}.
+          You against {count - 1} {BOT_LEVELS.find((b) => b.key === bot)!.name}{' '}
+          {count === 2 ? 'bot' : 'bots'}.
         </p>
+      </fieldset>
+      <fieldset>
+        <legend>Bots</legend>
+        <div className="lazy-rules">
+          {BOT_LEVELS.map((b) => (
+            <label key={b.key} className="choice">
+              <input
+                type="radio"
+                name="bot"
+                checked={bot === b.key}
+                onChange={() => setBot(b.key)}
+              />
+              <span>
+                <strong>{b.name}</strong>
+                <span className="hint"> {b.text}</span>
+              </span>
+            </label>
+          ))}
+        </div>
       </fieldset>
       <fieldset>
         <legend>Your color</legend>
@@ -70,6 +95,22 @@ export function Setup({
               </span>
             </label>
           ))}
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>Autopilot</legend>
+        <div className="lazy-rules">
+          <label className="choice">
+            <input
+              type="checkbox"
+              checked={autoMove}
+              onChange={(e) => setAutoMove(e.target.checked)}
+            />
+            <span>
+              <strong>🤖 Auto-move</strong>
+              <span className="hint"> When you have only one move (or none), play it for me.</span>
+            </span>
+          </label>
         </div>
       </fieldset>
       <button className="primary" onClick={start}>

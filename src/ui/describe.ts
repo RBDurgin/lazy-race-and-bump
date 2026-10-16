@@ -1,6 +1,7 @@
 // Human-readable text for cards, moves and engine events.
 import { applyMove } from '../engine/apply'
 import { pawnById } from '../engine/state'
+import type { BotLevel } from '../bots'
 import type { Card, Color, GameEvent, GameState, Move, Settings } from '../engine/types'
 
 export const COLOR_NAMES: Readonly<Record<Color, string>> = {
@@ -38,6 +39,11 @@ export const LAZY_RULES: readonly { key: keyof Settings; name: string; text: str
     name: '⏰ Snooze',
     text: 'Once per game, skip a turn and keep your card for later.',
   },
+]
+
+export const BOT_LEVELS: readonly { key: BotLevel; name: string; text: string }[] = [
+  { key: 'easy', name: 'Easy', text: 'Picks any legal move at random.' },
+  { key: 'medium', name: 'Medium', text: 'Goes for bumps and progress, and dodges danger.' },
 ]
 
 /** `red-0` → `Red 1`. */

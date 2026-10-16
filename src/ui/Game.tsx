@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useReducer, useState } from 'react'
-import { easyBot } from '../bots/easy'
+import { BOTS } from '../bots'
 import { legalMoves } from '../engine/game'
 import { canSnooze } from '../engine/lazy'
 import { destinationOf } from '../engine/moves'
@@ -9,10 +9,19 @@ import type { Move, Pawn } from '../engine/types'
 import { Board, type Target } from './Board'
 import { COLOR_NAMES } from './describe'
 import { EventLog } from './EventLog'
-import { botAction, initUi, uiReducer, type Action, type GameConfig } from './gameReducer'
+import {
+  autopilotAction,
+  botAction,
+  initUi,
+  uiReducer,
+  type Action,
+  type GameConfig,
+} from './gameReducer'
 import { TurnPanel } from './TurnPanel'
 
 const BOT_DELAY_MS = { draw: 500, move: 800 }
+/** Long enough to see the card, and to hit snooze instead. */
+const AUTO_MOVE_DELAY_MS = 1200
 
 interface GameProps {
   config: GameConfig
@@ -24,9 +33,12 @@ export function Game({ config, onPlayAgain, onNewSetup }: GameProps) {
   const [ui, dispatch] = useReducer(uiReducer, config, initUi)
   const [selected, setSelected] = useState<string | null>(null)
   const [choice, setChoice] = useState<Move[] | null>(null)
+  const [lazyMode, setLazyMode] = useState(false)
   const { game, log } = ui
   const human = config.human
   const isHumanTurn = game.phase !== 'over' && currentColor(game) === human
+  // In full lazy mode the human's turns are the bot's, so the controls go quiet.
+  const canAct = isHumanTurn && !lazyMode
 
   const act = (action: Action) => {
     setSelected(null)
@@ -34,19 +46,25 @@ export function Game({ config, onPlayAgain, onNewSetup }: GameProps) {
     dispatch(action)
   }
 
-  // Bots take their turns on a timer, one engine step at a time.
+  // Bots, and autopilot on the human's turns, act on a timer, one engine step at a time.
+  const bot = BOTS[config.bot]
+  const autoMove = config.autoMove
+  const pending = useMemo(
+    () => (isHumanTurn ? autopilotAction(game, { lazyMode, autoMove }) : botAction(game, bot)),
+    [game, isHumanTurn, lazyMode, autoMove, bot],
+  )
+  const delay = canAct ? AUTO_MOVE_DELAY_MS : BOT_DELAY_MS[game.phase === 'draw' ? 'draw' : 'move']
   useEffect(() => {
-    if (isHumanTurn) return
-    const action = botAction(game, easyBot)
-    if (!action) return
-    const timer = setTimeout(
-      () => dispatch(action),
-      BOT_DELAY_MS[game.phase === 'draw' ? 'draw' : 'move'],
-    )
+    if (!pending) return
+    const timer = setTimeout(() => {
+      setSelected(null)
+      setChoice(null)
+      dispatch(pending)
+    }, delay)
     return () => clearTimeout(timer)
-  }, [game, isHumanTurn])
+  }, [pending, delay])
 
-  const moves = useMemo(() => (isHumanTurn ? legalMoves(game) : []), [game, isHumanTurn])
+  const moves = useMemo(() => (canAct ? legalMoves(game) : []), [game, canAct])
   const movable = useMemo(() => new Set(moves.map((m) => m.pawn)), [moves])
   // With only one pawn able to move, select it straight away.
   const active = selected ?? (movable.size === 1 ? [...movable][0] : null)
@@ -83,6 +101,17 @@ export function Game({ config, onPlayAgain, onNewSetup }: GameProps) {
   }
 
   const drawAgain = isHumanTurn && game.phase === 'draw' && log.at(-1)?.color === human
+  const note = !isHumanTurn
+    ? game.phase === 'over'
+      ? null
+      : 'Thinking…'
+    : lazyMode
+      ? '🛋️ Full lazy mode: the Medium bot is playing your turn.'
+      : pending?.type === 'play'
+        ? 'Autopilot: only one move, so it’s playing that…'
+        : pending?.type === 'pass'
+          ? 'Autopilot: no legal move, so it’s passing…'
+          : null
 
   return (
     <div className="game">
@@ -113,16 +142,33 @@ export function Game({ config, onPlayAgain, onNewSetup }: GameProps) {
         <TurnPanel
           game={game}
           human={human}
-          isHumanTurn={isHumanTurn}
+          isHumanTurn={canAct}
+          note={note}
           drawAgain={drawAgain}
           moves={choice ?? moves}
           choosing={choice !== null}
-          canSnooze={isHumanTurn && canSnooze(game)}
+          canSnooze={canAct && canSnooze(game)}
           onDraw={() => act({ type: 'draw' })}
           onPass={() => act({ type: 'pass' })}
           onPlay={(move) => act({ type: 'play', move })}
           onSnooze={() => act({ type: 'snooze' })}
         />
+        {game.phase !== 'over' && (
+          <label className="choice lazy-mode">
+            <input
+              type="checkbox"
+              checked={lazyMode}
+              onChange={(e) => setLazyMode(e.target.checked)}
+            />
+            <span>
+              <strong>🛋️ Full lazy mode</strong>
+              <span className="hint">
+                {' '}
+                Let the Medium bot play your turns. Switch off any time.
+              </span>
+            </span>
+          </label>
+        )}
         <EventLog log={log} />
       </div>
     </div>

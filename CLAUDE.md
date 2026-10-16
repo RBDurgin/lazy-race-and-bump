@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project status
 
-**Lazy Race and Bump** is a browser race-and-bump board game: a shortened, "lazy" take on classic pawn-racing games. Phases 0–3 are done: the base-rules engine (`src/engine/`), the Easy bot (`src/bots/`), a playable UI (`src/ui/`: setup screen with lazy-rule toggles, SVG board, click-to-move, event log, game-over screen) and the lazy mechanics (naps, couches, snooze). Next up is Phase 4 (Medium bot and autopilot). Design docs:
+**Lazy Race and Bump** is a browser race-and-bump board game: a shortened, "lazy" take on classic pawn-racing games. Phases 0–4 are done: the base-rules engine (`src/engine/`), the Easy and Medium bots (`src/bots/`), a playable UI (`src/ui/`: setup screen with bot level, lazy-rule and auto-move toggles, SVG board, click-to-move, event log, game-over screen), the lazy mechanics (naps, couches, snooze) and autopilot (auto-move, full lazy mode). Next up is Phase 5 (polish and ship). Design docs:
 
 - `docs/PLAN.md`: the approved phased plan (Phase 0 setup → Phase 5 polish). Work through it phase by phase.
 - `docs/RULES.md`: the rules. This is the source of truth for game behavior. When the engine and the rules disagree, fix one of them so they match. Don't let them drift apart.
@@ -37,8 +37,10 @@ Vite + React + TypeScript (`strict`), Vitest, ESLint (flat config) + Prettier. G
   - Naps are rolled in `playMove`, not `applyMove`, so `applyMove` stays deterministic and the UI can use it to preview moves (including couch effects).
   - Couch state is `GameState.asleep` (pawn id → the turn it fell asleep on). `getLegalMoves` filters out drowsy pawns, and `endTurn` wakes them.
   - Snooze is `snoozeTurn`. The kept card sits in `GameState.kept` and comes back from `drawCard`.
-- **`src/bots/`**: each bot is a function `(state, card) => Move` behind a common `Bot` interface. Autopilot's "full lazy mode" reuses the Medium bot, so it's not a separate code path.
+- **`src/bots/`**: each bot is a function `(state, card) => Move` behind a common `Bot` interface. `index.ts` maps `BotLevel` → bot. Autopilot's "full lazy mode" reuses the Medium bot, so it's not a separate code path.
+  - `medium.ts` scores each legal move by running `applyMove` on a copy and calling `evaluate()` on the result (steps to Home, danger from opponents' next draws, couches), averaging in the nap chance. Weight tweaks barely move its win rate, because only about 38% of draws offer a real choice.
+  - `arena.ts` (`playBots`) plays headless bot-vs-bot games. `benchmark.test.ts` checks that Medium clearly beats Easy.
 - **`src/ui/`**: React components with an SVG board. The UI never reimplements rules; it asks the engine for legal moves.
-  - `gameReducer.ts` is the pure `useReducer` wrapper: one action per engine step (`draw`, `play`, `pass`), plus the event log. `botAction()` picks a bot's next action; `Game.tsx` dispatches it on a timer. Keep logic here (tested as `.ts`) rather than in components.
+  - `gameReducer.ts` is the pure `useReducer` wrapper: one action per engine step (`draw`, `play`, `pass`), plus the event log. `botAction()` picks a bot's next action and `autopilotAction()` picks one for the human's turn (a forced move, or every step in full lazy mode); `Game.tsx` dispatches either on a timer. Keep logic here (tested as `.ts`) rather than in components.
   - `layout.ts` maps positions to SVG coordinates on an 11×11 grid. Each side is laid out as if it were the top row, then rotated.
   - `describe.ts` holds all user-facing text for cards, moves and events.

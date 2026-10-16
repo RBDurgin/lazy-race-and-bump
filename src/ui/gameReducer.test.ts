@@ -1,12 +1,23 @@
 import { describe, expect, it } from 'vitest'
 import { easyBot } from '../bots/easy'
+import { mediumBot } from '../bots/medium'
+import { HOME, track } from '../engine/board'
 import { BASE_SETTINGS, legalMoves } from '../engine/game'
 import { currentColor } from '../engine/state'
+import { scenario } from '../engine/testing'
 import { COLORS } from '../engine/types'
-import { botAction, initUi, opponentColors, uiReducer, type GameConfig } from './gameReducer'
+import {
+  autopilotAction,
+  botAction,
+  initUi,
+  opponentColors,
+  uiReducer,
+  type GameConfig,
+} from './gameReducer'
 
 const LAZY = { naps: true, couches: true, snooze: true }
-const config = (c: Omit<GameConfig, 'settings'>): GameConfig => ({ settings: BASE_SETTINGS, ...c })
+const config = (c: Pick<GameConfig, 'human' | 'players' | 'seed'> & Partial<GameConfig>) =>
+  ({ settings: BASE_SETTINGS, bot: 'easy', autoMove: false, ...c }) satisfies GameConfig
 
 describe('uiReducer', () => {
   it('seats the human first', () => {
@@ -35,7 +46,7 @@ describe('uiReducer', () => {
   })
 
   it('passes the lazy settings to the engine and logs naps and couches', () => {
-    let ui = initUi({ human: 'red', players: ['red', 'blue'], seed: 3, settings: LAZY })
+    let ui = initUi(config({ human: 'red', players: ['red', 'blue'], seed: 3, settings: LAZY }))
     expect(ui.game.settings).toEqual(LAZY)
     let napped = false
     for (let action = botAction(ui.game, easyBot); action; action = botAction(ui.game, easyBot)) {
@@ -47,7 +58,7 @@ describe('uiReducer', () => {
   })
 
   it('snoozes, then hands back the kept card instead of drawing', () => {
-    let ui = initUi({ human: 'red', players: ['red', 'blue'], seed: 1, settings: LAZY })
+    let ui = initUi(config({ human: 'red', players: ['red', 'blue'], seed: 1, settings: LAZY }))
     ui = uiReducer(ui, { type: 'draw' })
     const card = ui.game.card
     ui = uiReducer(ui, { type: 'snooze' })
@@ -58,6 +69,32 @@ describe('uiReducer', () => {
     ui = uiReducer(ui, { type: 'draw' })
     expect(ui.game.card).toBe(card)
     expect(ui.log.at(-1)?.text).toMatch(/they kept/)
+  })
+})
+
+describe('autopilotAction', () => {
+  const off = { lazyMode: false, autoMove: false }
+  const auto = { lazyMode: false, autoMove: true }
+
+  it('plays a forced move or pass, but leaves real choices and draws to the human', () => {
+    const one = scenario({ card: '1', at: { 'red-0': HOME } }) // only Red 2 can leave Start
+    expect(autopilotAction(one, auto)).toEqual({ type: 'play', move: legalMoves(one)[0] })
+    expect(autopilotAction(one, off)).toBeNull()
+    const none = scenario({ card: '3' }) // both pawns in Start
+    expect(autopilotAction(none, auto)).toEqual({ type: 'pass' })
+    const two = scenario({ card: '3', at: { 'red-0': track(10), 'red-1': track(20) } })
+    expect(autopilotAction(two, auto)).toBeNull()
+    expect(autopilotAction(scenario({}), auto)).toBeNull()
+  })
+
+  it('hands every step of the turn to the Medium bot in full lazy mode', () => {
+    const lazy = { lazyMode: true, autoMove: false }
+    expect(autopilotAction(scenario({}), lazy)).toEqual({ type: 'draw' })
+    const two = scenario({
+      card: '3',
+      at: { 'red-0': track(10), 'red-1': track(30), 'blue-0': track(33) },
+    })
+    expect(autopilotAction(two, lazy)).toEqual({ type: 'play', move: mediumBot(two, '3') })
   })
 })
 

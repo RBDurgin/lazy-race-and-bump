@@ -29,15 +29,22 @@ export function napCheck(state: GameState, move: Move): NapCheck {
   const [roll, rng] = nextInt(state.rng, NAP_DIE_SIDES)
   if (roll !== 0) return { move, rng, events: [] }
 
+  const napped = nappedMove(state, move)
+  const moved = napped ? Math.floor(move.steps / 2) : 0
+  return {
+    move: napped,
+    rng,
+    events: [{ type: 'nap', pawn: move.pawn, steps: move.steps, moved }],
+  }
+}
+
+/** What a numbered move becomes if the pawn naps: half the steps, or null if it stays put. */
+export function nappedMove(state: GameState, move: Move): Move | null {
+  if (move.kind !== 'forward' && move.kind !== 'backward') return move
   const pawn = pawnById(state, move.pawn)
   const steps = Math.floor(move.steps / 2)
   const to = walk(pawn.color, pawn.pos, move.kind === 'forward' ? steps : -steps)
-  const moves = steps > 0 && to !== null && canLand(state, pawn.color, to)
-  return {
-    move: moves ? { ...move, steps } : null,
-    rng,
-    events: [{ type: 'nap', pawn: pawn.id, steps: move.steps, moved: moves ? steps : 0 }],
-  }
+  return steps > 0 && to !== null && canLand(state, pawn.color, to) ? { ...move, steps } : null
 }
 
 // 🛋️ Couches

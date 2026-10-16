@@ -6,7 +6,10 @@ import { moveKey } from '../engine/moves'
 interface TurnPanelProps {
   game: GameState
   human: Color
+  /** The human may act now (their turn, and not handed to full lazy mode). */
   isHumanTurn: boolean
+  /** A status line, e.g. a bot thinking or autopilot about to move. */
+  note: string | null
   drawAgain: boolean
   /** Moves to offer as buttons: all legal moves, or the ones sharing a clicked square. */
   moves: Move[]
@@ -97,7 +100,7 @@ export function TurnPanel(props: TurnPanelProps) {
           ⏰ Snooze: skip this turn, keep the {game.card} (once per game)
         </button>
       )}
-      {!isHumanTurn && game.phase !== 'over' && <p className="hint">Thinking…</p>}
+      {props.note && <p className="hint">{props.note}</p>}
     </section>
   )
 }

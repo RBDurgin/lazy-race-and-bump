@@ -175,8 +175,13 @@ legend {
   align-items: flex-start;
 }
 
-.lazy-rules .hint {
+.choice .hint {
   margin: 0;
+}
+
+.lazy-mode {
+  align-items: flex-start;
+  background: var(--panel);
 }
 
 /* Game layout */

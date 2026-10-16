@@ -100,5 +100,10 @@ Once per game, each player may skip a turn on purpose and keep the card they dre
 
 ## Autopilot (for lazy humans)
 
-- **Auto-move:** if you have exactly one legal move, or none, the game plays it for you.
+- **Auto-move:** if you have exactly one legal move, or none, the game plays it for you. It waits a moment first, so you can still hit snooze. It's a setup option, on by default.
 - **Full lazy mode:** hand your turns to the Medium bot. You can toggle it at any time.
+
+## Bots
+
+- **Easy** picks a random legal move.
+- **Medium** tries each legal move and keeps the one that leaves the best position: the most progress toward Home, the most opponent progress bumped away, pawns safe in the safety zone, and as little as possible within reach of opponents' next draws or asleep on a couch. With naps on, it weighs in the 1-in-6 nap. It never snoozes. It wins about 70% of 2-player games against Easy, and about half of 4-player games against three Easy bots.

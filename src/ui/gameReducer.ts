@@ -2,6 +2,8 @@
 import { createGame, drawCard, legalMoves, passTurn, playMove, snoozeTurn } from '../engine/game'
 import { currentColor } from '../engine/state'
 import type { Color, GameEvent, GameState, Move, Result, Settings } from '../engine/types'
+import type { BotLevel } from '../bots'
+import { mediumBot } from '../bots/medium'
 import type { Bot } from '../bots/types'
 import { eventText, moveLabel } from './describe'
 
@@ -11,6 +13,10 @@ export interface GameConfig {
   players: Color[]
   seed: number
   settings: Settings
+  /** How the bot opponents play. */
+  bot: BotLevel
+  /** Autopilot plays the human's forced moves (exactly one legal move, or none). */
+  autoMove: boolean
 }
 
 export interface LogEntry {
@@ -95,6 +101,21 @@ export function botAction(game: GameState, bot: Bot): Action | null {
   if (game.phase === 'draw') return { type: 'draw' }
   const moves = legalMoves(game)
   return moves.length === 0 ? { type: 'pass' } : { type: 'play', move: bot(game, game.card!) }
+}
+
+/**
+ * What autopilot does on the human's turn, or null to leave it to them. Full lazy mode hands the
+ * whole turn to the Medium bot. Auto-move only plays a forced move: the one legal move, or a pass.
+ */
+export function autopilotAction(
+  game: GameState,
+  { lazyMode, autoMove }: { lazyMode: boolean; autoMove: boolean },
+): Action | null {
+  if (lazyMode) return botAction(game, mediumBot)
+  if (!autoMove || game.phase !== 'move') return null
+  const moves = legalMoves(game)
+  if (moves.length > 1) return null
+  return moves.length === 1 ? { type: 'play', move: moves[0] } : { type: 'pass' }
 }
 
 /** Bots for 2–4 players, spaced around the board: opposite the human with 2 players. */
