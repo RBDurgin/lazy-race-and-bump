@@ -17,6 +17,18 @@ Be the first player to get both of your pawns from **Start** to **Home**.
 - Each side has one **slide** (4 squares long) and one **couch** square.
 - Shuffle the 40-card deck. The youngest player (or the human) goes first, then play passes clockwise.
 
+### Board layout
+
+Track squares are numbered 0–39 clockwise. Colors sit clockwise in the order red, blue, yellow, green, and each owns a side: red 0–9, blue 10–19, yellow 20–29, green 30–39. Counting from the first square of a color's side:
+
+| Offset | What's there                                                              |
+| ------ | ------------------------------------------------------------------------- |
+| +1     | Safety entry: moving forward from here goes into that color's safety zone |
+| +3     | Start exit: where a pawn leaving Start lands                              |
+| +5..+8 | That color's slide (start at +5, end at +8)                               |
+
+From its Start exit, a pawn needs 38 steps to reach its safety entry, then 3 safety squares and 1 more step into Home (42 steps in all). A pawn that moves backward past its Start exit can reach its safety zone in just a few steps.
+
 ## On your turn
 
 1. Draw a card.
@@ -37,6 +49,11 @@ Be the first player to get both of your pawns from **Start** to **Home**.
 | `11`    | Move 11 forward, **or** swap places with an opponent's pawn on the main track.                          |
 | `Bump!` | Move a pawn from Start onto any opponent's pawn on the main track and send that pawn back to its Start. |
 
+**Deck mix (40 cards):** six each of `1` and `2`, and four each of `3`, `4`, `5`, `8`, `10`, `11` and `Bump!`. When the draw pile runs out, shuffle the discard pile to make a new one.
+
+- If a card allows any legal move, you must make one. You can't decline an `11` or a backward move.
+- After a `2` you draw again even if the `2` itself had no legal move.
+
 ## Movement rules
 
 - **Bumping:** if you end your move on an opponent's pawn, it goes back to its Start.
@@ -44,7 +61,10 @@ Be the first player to get both of your pawns from **Start** to **Home**.
 - **Home needs an exact count.** Overshooting is not a legal move.
 - Pawns in a Safety zone can't be bumped or swapped.
 - Backward moves can carry a pawn out of the Safety zone and back onto the main track.
+- Moving pawns jump over any pawns they pass; only the square you end on matters.
 - **Slides:** landing exactly on the start of another color's slide carries your pawn to the end of it. Every pawn on the slide, yours included, is bumped back to Start. You don't slide on your own color's slide.
+  - Any landing counts: forward, backward, an `11` swap or a `Bump!`. Passing over a slide start does nothing.
+  - Only the moving pawn slides. An opponent swapped onto your old square never slides.
 
 ## Lazy rules
 
