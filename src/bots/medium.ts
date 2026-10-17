@@ -29,19 +29,36 @@ export function distanceHome(pawn: Pawn): number {
 
 // The chance that one random draw lets a pawn move a given number of steps (negative = back).
 const DECK_SIZE = buildDeck().length
-const REACH: { steps: number; chance: number }[] = (Object.keys(CARD_RULES) as Card[]).flatMap(
-  (card) => {
-    const { forward, backward } = CARD_RULES[card]
-    const chance = DECK_COUNTS[card] / DECK_SIZE
-    return [
-      ...(forward ? [{ steps: forward, chance }] : []),
-      ...(backward ? [{ steps: -backward, chance }] : []),
-    ]
-  },
-)
-const LEAVE_START_CHANCE = (Object.keys(CARD_RULES) as Card[])
-  .filter((card) => CARD_RULES[card].leaveStart)
-  .reduce((sum, card) => sum + DECK_COUNTS[card] / DECK_SIZE, 0)
+/** The chance of drawing each card from a full, fresh deck. */
+export const DECK_ODDS = Object.fromEntries(
+  (Object.keys(DECK_COUNTS) as Card[]).map((card) => [card, DECK_COUNTS[card] / DECK_SIZE]),
+) as Record<Card, number>
+
+interface Reach {
+  /** The chance one draw lets a pawn move a given number of steps (negative = back). */
+  steps: { steps: number; chance: number }[]
+  /** The chance one draw lets a pawn leave Start. */
+  leaveStart: number
+}
+
+function reachFor(odds: Record<Card, number>): Reach {
+  const cards = Object.keys(CARD_RULES) as Card[]
+  return {
+    steps: cards.flatMap((card) => {
+      const { forward, backward } = CARD_RULES[card]
+      const chance = odds[card]
+      return [
+        ...(forward ? [{ steps: forward, chance }] : []),
+        ...(backward ? [{ steps: -backward, chance }] : []),
+      ]
+    }),
+    leaveStart: cards
+      .filter((card) => CARD_RULES[card].leaveStart)
+      .reduce((sum, card) => sum + odds[card], 0),
+  }
+}
+
+const DECK_REACH = reachFor(DECK_ODDS)
 
 /** Whether an opponent ending a move on `square` bumps whoever is on any of `targets`. */
 function hits(square: number, mover: Color, targets: number[]): boolean {
@@ -52,20 +69,22 @@ function hits(square: number, mover: Color, targets: number[]): boolean {
 
 /**
  * Roughly how likely `pawn` is to be bumped on the opponents' next turns: the summed chance of
- * each opponent pawn drawing a card that lands on it (or next to it, if it's asleep).
+ * each opponent pawn drawing a card that lands on it (or next to it, if it's asleep). `odds` are
+ * the chances of drawing each card, if not those of a full deck.
  */
-export function danger(state: GameState, pawn: Pawn): number {
+export function danger(state: GameState, pawn: Pawn, odds?: Record<Card, number>): number {
   if (pawn.pos.kind !== 'track') return 0
+  const reach = odds ? reachFor(odds) : DECK_REACH
   const sq = pawn.pos.square
   const targets = pawn.id in state.asleep ? [wrap(sq - 1), sq, wrap(sq + 1)] : [sq]
   let chance = 0
   for (const opp of state.pawns) {
     if (opp.color === pawn.color) continue
     if (opp.pos.kind === 'start') {
-      if (hits(startExit(opp.color), opp.color, targets)) chance += LEAVE_START_CHANCE
+      if (hits(startExit(opp.color), opp.color, targets)) chance += reach.leaveStart
       continue
     }
-    for (const { steps, chance: c } of REACH) {
+    for (const { steps, chance: c } of reach.steps) {
       const to = walk(opp.color, opp.pos, steps)
       if (to?.kind === 'track' && hits(to.square, opp.color, targets)) chance += c
     }

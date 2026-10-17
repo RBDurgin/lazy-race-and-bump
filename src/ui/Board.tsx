@@ -1,5 +1,5 @@
-import type { KeyboardEvent } from 'react'
-import { COUCHES, SAFETY_LENGTH, TRACK_LENGTH, samePos, startExit } from '../engine/board'
+import { useLayoutEffect, useRef, type KeyboardEvent } from 'react'
+import { COUCHES, SAFETY_LENGTH, TRACK_LENGTH, startExit } from '../engine/board'
 import {
   COLORS,
   type Color,
@@ -9,6 +9,7 @@ import {
   type PawnPos,
 } from '../engine/types'
 import { pawnName } from './describe'
+import type { Burst, Effects } from './effects'
 import {
   BOARD_SIZE,
   HOME_RADIUS,
@@ -17,6 +18,7 @@ import {
   homeLabelPoint,
   homePoint,
   pawnPoint,
+  pawnSpot,
   safetyPoint,
   startLabelPoint,
   startPoint,
@@ -38,16 +40,72 @@ interface BoardProps {
   targets: Target[]
   onPawnClick: (pawn: Pawn) => void
   onTargetClick: (target: Target) => void
+  /** Animations for the latest step; `effectsId` changes with each step so they replay. */
+  effects: Effects | null
+  effectsId: number
 }
 
 const colorVar = (c: Color) => `var(--${c})`
 const tintVar = (c: Color) => `var(--${c}-tint)`
 const sideColor = (square: number) => COLORS[Math.floor(square / (TRACK_LENGTH / COLORS.length))]
 
-/** Which of a color's two pawns this is among those sharing Start or Home, for spacing. */
-function slotOf(game: GameState, pawn: Pawn): number {
-  if (pawn.pos.kind !== 'start' && pawn.pos.kind !== 'home') return 0
-  return game.pawns.filter((p) => p.color === pawn.color && samePos(p.pos, pawn.pos)).indexOf(pawn)
+const reducedMotion = () =>
+  typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
+
+const translate = (p: { x: number; y: number }) => `translate(${p.x}px, ${p.y}px)`
+
+/** Plays each pawn's motion. The pawns render at their new spots; this animates them there. */
+function usePawnMotion(effects: Effects | null, effectsId: number) {
+  const pawnEls = useRef(new Map<string, SVGGElement>())
+  useLayoutEffect(() => {
+    if (!effects || reducedMotion()) return
+    for (const m of effects.motions) {
+      const el = pawnEls.current.get(m.pawn)
+      if (!el || typeof el.animate !== 'function') continue
+      el.getAnimations().forEach((a) => a.cancel())
+      const keyframes = m.points.map((p, i) => ({ transform: translate(p), offset: m.offsets[i] }))
+      // `backwards` holds the first keyframe through the delay: a bumped pawn waits to be hit.
+      // Animations aren't cancelled when the step changes, only when the same pawn moves again.
+      el.animate(keyframes, {
+        duration: m.duration,
+        delay: m.delay,
+        easing: 'ease-in-out',
+        fill: 'backwards',
+      })
+    }
+  }, [effects, effectsId])
+  return (id: string) => (el: SVGGElement | null) => {
+    if (el) pawnEls.current.set(id, el)
+    else pawnEls.current.delete(id)
+  }
+}
+
+const STAR = Array.from({ length: 16 }, (_, i) => {
+  const r = i % 2 === 0 ? 0.62 : 0.3
+  const a = (i * Math.PI) / 8
+  return `${(r * Math.sin(a)).toFixed(3)},${(-r * Math.cos(a)).toFixed(3)}`
+}).join(' ')
+
+function BurstMark({ burst }: { burst: Burst }) {
+  return (
+    <g className={`burst burst-${burst.kind}`} transform={`translate(${burst.at.x} ${burst.at.y})`}>
+      <g className="burst-body" style={{ animationDelay: `${burst.delay}ms` }}>
+        {burst.kind === 'bump' && (
+          <>
+            <polygon points={STAR} />
+            <text y={0.03}>Bump!</text>
+          </>
+        )}
+        {burst.kind === 'home' && (
+          <>
+            <circle r={0.5} />
+            <circle r={0.75} />
+          </>
+        )}
+        {burst.kind === 'nap' && <text>Zzz</text>}
+      </g>
+    </g>
+  )
 }
 
 function activate(handler: () => void) {
@@ -72,7 +130,10 @@ export function Board({
   targets,
   onPawnClick,
   onTargetClick,
+  effects,
+  effectsId,
 }: BoardProps) {
+  const pawnRef = usePawnMotion(effects, effectsId)
   const exits = new Set(game.players.map(startExit))
   const selectedPawn = game.pawns.find((p) => p.id === selected)
 
@@ -177,7 +238,7 @@ export function Board({
       })}
 
       {game.pawns.map((pawn) => {
-        const p = pawnPoint(pawn.color, pawn.pos, slotOf(game, pawn))
+        const p = pawnSpot(game, pawn)
         const canMove = movable.has(pawn.id)
         const asleep = pawn.id in game.asleep
         const classes = [
@@ -190,6 +251,7 @@ export function Board({
         return (
           <g
             key={pawn.id}
+            ref={pawnRef(pawn.id)}
             className={classes.filter(Boolean).join(' ')}
             transform={`translate(${p.x} ${p.y})`}
             aria-label={label}
@@ -222,6 +284,9 @@ export function Board({
             />
           )
         })}
+
+      {!reducedMotion() &&
+        effects?.bursts.map((b, i) => <BurstMark key={`${effectsId}-${i}`} burst={b} />)}
     </svg>
   )
 }

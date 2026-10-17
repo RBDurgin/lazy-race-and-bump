@@ -1,8 +1,8 @@
 // Board geometry in SVG units: the board is an 11×11 grid of 1-unit cells, and the 40 track
 // squares run clockwise around its edge. Each color's side is drawn in "local" coordinates as if
 // it were the top row (x along the side, y pointing inward), then rotated into place.
-import { SIDE_LENGTH, SLIDES, safetyEntry, sideStart, startExit } from '../engine/board'
-import { COLORS, type Color, type PawnPos } from '../engine/types'
+import { SIDE_LENGTH, SLIDES, safetyEntry, samePos, sideStart, startExit } from '../engine/board'
+import { COLORS, type Color, type GameState, type Pawn, type PawnPos } from '../engine/types'
 
 export const BOARD_SIZE = SIDE_LENGTH + 1
 
@@ -66,6 +66,19 @@ export function pawnPoint(color: Color, pos: PawnPos, slot = 0): Point {
     case 'safety':
       return safetyPoint(color, pos.index)
   }
+}
+
+/** Which of a color's two pawns this is among those sharing Start or Home, for spacing. */
+export function slotOf(game: GameState, pawn: Pawn): number {
+  if (pawn.pos.kind !== 'start' && pawn.pos.kind !== 'home') return 0
+  return game.pawns
+    .filter((p) => p.color === pawn.color && samePos(p.pos, pawn.pos))
+    .findIndex((p) => p.id === pawn.id)
+}
+
+/** Where a pawn is drawn in `game`. */
+export function pawnSpot(game: GameState, pawn: Pawn): Point {
+  return pawnPoint(pawn.color, pawn.pos, slotOf(game, pawn))
 }
 
 export interface SlideShape {

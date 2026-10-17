@@ -8,6 +8,7 @@ import { currentColor } from '../engine/state'
 import type { Move, Pawn } from '../engine/types'
 import { Board, type Target } from './Board'
 import { COLOR_NAMES } from './describe'
+import { effectsFor } from './effects'
 import { EventLog } from './EventLog'
 import {
   autopilotAction,
@@ -17,19 +18,28 @@ import {
   type Action,
   type GameConfig,
 } from './gameReducer'
+import { replayOf, type Replay } from './replay'
+import { playSound } from './sound'
 import { TurnPanel } from './TurnPanel'
 
 const BOT_DELAY_MS = { draw: 500, move: 800 }
 /** Long enough to see the card, and to hit snooze instead. */
 const AUTO_MOVE_DELAY_MS = 1200
+/** A beat after the animations finish before the next timed step. */
+const SETTLE_MS = 200
 
 interface GameProps {
   config: GameConfig
   onPlayAgain: () => void
   onNewSetup: () => void
+  /** Called once when the game ends, with its replay. */
+  onFinish: (replay: Replay) => void
+  onReplay: (replay: Replay) => void
+  sound: boolean
 }
 
-export function Game({ config, onPlayAgain, onNewSetup }: GameProps) {
+export function Game(props: GameProps) {
+  const { config, onPlayAgain, onNewSetup, onFinish, onReplay, sound } = props
   const [ui, dispatch] = useReducer(uiReducer, config, initUi)
   const [selected, setSelected] = useState<string | null>(null)
   const [choice, setChoice] = useState<Move[] | null>(null)
@@ -53,7 +63,23 @@ export function Game({ config, onPlayAgain, onNewSetup }: GameProps) {
     () => (isHumanTurn ? autopilotAction(game, { lazyMode, autoMove }) : botAction(game, bot)),
     [game, isHumanTurn, lazyMode, autoMove, bot],
   )
-  const delay = canAct ? AUTO_MOVE_DELAY_MS : BOT_DELAY_MS[game.phase === 'draw' ? 'draw' : 'move']
+  // Each engine step's animations and sound cues.
+  const { latest } = ui
+  const effects = useMemo(
+    () => (latest ? effectsFor(latest.before, game, latest.events) : null),
+    [latest, game],
+  )
+  useEffect(() => {
+    if (!sound || !effects) return
+    const timers = effects.cues.map((c) => setTimeout(() => playSound(c.sound), c.delay))
+    return () => timers.forEach(clearTimeout)
+  }, [effects, sound])
+
+  // Timed steps wait for the last step's animations, so a bump is seen before the next card.
+  const baseDelay = canAct
+    ? AUTO_MOVE_DELAY_MS
+    : BOT_DELAY_MS[game.phase === 'draw' ? 'draw' : 'move']
+  const delay = Math.max(baseDelay, (effects?.end ?? 0) + SETTLE_MS)
   useEffect(() => {
     if (!pending) return
     const timer = setTimeout(() => {
@@ -63,6 +89,14 @@ export function Game({ config, onPlayAgain, onNewSetup }: GameProps) {
     }, delay)
     return () => clearTimeout(timer)
   }, [pending, delay])
+
+  const over = game.phase === 'over'
+  const replay = useMemo(() => (over ? replayOf(ui) : null), [over, ui])
+  useEffect(() => {
+    if (replay) onFinish(replay)
+    // Only once per game: the parent's callback identity doesn't matter.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [replay])
 
   const moves = useMemo(() => (canAct ? legalMoves(game) : []), [game, canAct])
   const movable = useMemo(() => new Set(moves.map((m) => m.pawn)), [moves])
@@ -124,6 +158,8 @@ export function Game({ config, onPlayAgain, onNewSetup }: GameProps) {
           targets={targets}
           onPawnClick={onPawnClick}
           onTargetClick={onTargetClick}
+          effects={effects}
+          effectsId={latest?.id ?? 0}
         />
         {game.winner && (
           <div className="game-over" role="dialog" aria-label="Game over">
@@ -133,6 +169,7 @@ export function Game({ config, onPlayAgain, onNewSetup }: GameProps) {
               <button className="primary" onClick={onPlayAgain} autoFocus>
                 Play again
               </button>
+              <button onClick={() => onReplay(replay!)}>Watch replay</button>
               <button onClick={onNewSetup}>Change setup</button>
             </div>
           </div>

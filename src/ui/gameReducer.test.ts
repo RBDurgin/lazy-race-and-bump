@@ -36,6 +36,18 @@ describe('uiReducer', () => {
     expect(new Set(ui.log.map((e) => e.id)).size).toBe(ui.log.length)
   })
 
+  it('records what each step did, for animations', () => {
+    let ui = initUi(config({ human: 'red', players: ['red', 'yellow'], seed: 1 }))
+    expect(ui.latest).toBeNull()
+    const before = ui.game
+    ui = uiReducer(ui, { type: 'draw' })
+    expect(ui.latest?.id).toBe(1)
+    expect(ui.latest?.before).toBe(before)
+    expect(ui.latest?.events.some((e) => e.type === 'draw')).toBe(true)
+    ui = uiReducer(ui, botAction(ui.game, easyBot)!)
+    expect(ui.latest?.id).toBe(2)
+  })
+
   it('plays a whole game with bots driving every turn', () => {
     let ui = initUi(config({ human: 'red', players: ['red', 'blue', 'yellow', 'green'], seed: 7 }))
     for (let action = botAction(ui.game, easyBot); action; action = botAction(ui.game, easyBot)) {
@@ -104,5 +116,14 @@ describe('opponentColors', () => {
     expect(opponentColors('blue', 1, COLORS)).toEqual(['green'])
     expect(opponentColors('green', 2, COLORS)).toEqual(['red', 'blue'])
     expect(opponentColors('blue', 3, COLORS)).toEqual(['yellow', 'green', 'red'])
+  })
+})
+
+describe('botAction with a snoozing bot', () => {
+  it('snoozes when the bot wants to', () => {
+    const state = scenario({ card: '4', settings: LAZY, at: { 'red-0': track(5) } })
+    const bot = Object.assign(() => legalMoves(state)[0], { snooze: () => true })
+    expect(botAction(state, bot)).toEqual({ type: 'snooze' })
+    expect(botAction(state, mediumBot)).toMatchObject({ type: 'play' })
   })
 })

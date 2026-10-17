@@ -3,22 +3,24 @@ import type { BotLevel } from '../bots'
 import { COLORS, type Color, type Settings } from '../engine/types'
 import { BOT_LEVELS, COLOR_NAMES, LAZY_RULES } from './describe'
 import { newSeed, opponentColors, type GameConfig } from './gameReducer'
+import type { Prefs } from './prefs'
 
-const ALL_LAZY: Settings = { naps: true, couches: true, snooze: true }
-
-/** The setup form. `last` pre-fills it with the previous game's choices. */
-export function Setup({
-  last,
-  onStart,
-}: {
-  last: GameConfig | null
+/** The setup form, pre-filled with the remembered choices from last time. */
+interface SetupProps {
+  prefs: Prefs
   onStart: (config: GameConfig) => void
-}) {
-  const [human, setHuman] = useState<Color>(last?.human ?? 'red')
-  const [count, setCount] = useState(last?.players.length ?? 2)
-  const [settings, setSettings] = useState<Settings>(last?.settings ?? ALL_LAZY)
-  const [bot, setBot] = useState<BotLevel>(last?.bot ?? 'medium')
-  const [autoMove, setAutoMove] = useState(last?.autoMove ?? true)
+  /** Something to tell the player, such as a broken replay link. */
+  notice?: string
+  /** Opens the replay of the last finished game, if there is one. */
+  onWatchLast: (() => void) | null
+}
+
+export function Setup({ prefs, onStart, notice, onWatchLast }: SetupProps) {
+  const [human, setHuman] = useState<Color>(prefs.human)
+  const [count, setCount] = useState(prefs.count)
+  const [settings, setSettings] = useState<Settings>(prefs.settings)
+  const [bot, setBot] = useState<BotLevel>(prefs.bot)
+  const [autoMove, setAutoMove] = useState(prefs.autoMove)
 
   const start = () =>
     onStart({
@@ -33,6 +35,7 @@ export function Setup({
   return (
     <section className="panel setup">
       <h2>New game</h2>
+      {notice && <p className="notice">{notice}</p>}
       <fieldset>
         <legend>Players</legend>
         <div className="row">
@@ -113,9 +116,12 @@ export function Setup({
           </label>
         </div>
       </fieldset>
-      <button className="primary" onClick={start}>
-        Start game
-      </button>
+      <div className="row">
+        <button className="primary" onClick={start}>
+          Start game
+        </button>
+        {onWatchLast && <button onClick={onWatchLast}>🎬 Watch your last game</button>}
+      </div>
     </section>
   )
 }

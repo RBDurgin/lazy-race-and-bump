@@ -32,6 +32,10 @@ export interface UiState {
   log: LogEntry[]
   /** The pawn that napped on the latest move, for the 💤 on the board. */
   napped: string | null
+  /** What the latest step did, for animations and sounds. `id` counts steps. */
+  latest: { id: number; before: GameState; events: GameEvent[] } | null
+  /** Every action so far. With the config's seed, that's enough to replay the game. */
+  actions: Action[]
 }
 
 export type Action =
@@ -52,6 +56,8 @@ export function initUi(config: GameConfig): UiState {
     game: createGame({ players, seed: config.seed, settings: config.settings }),
     log: [],
     napped: null,
+    latest: null,
+    actions: [],
   }
 }
 
@@ -62,7 +68,13 @@ function toneOf(e: GameEvent): LogEntry['tone'] {
   return 'plain'
 }
 
-function withLog(ui: UiState, result: Result, color: Color, lead?: string): UiState {
+function withLog(
+  ui: UiState,
+  action: Action,
+  result: Result,
+  color: Color,
+  lead?: string,
+): UiState {
   let id = ui.log.at(-1)?.id ?? 0
   const lines: LogEntry[] = []
   if (lead) lines.push({ id: ++id, color, text: lead, tone: 'plain' })
@@ -78,6 +90,8 @@ function withLog(ui: UiState, result: Result, color: Color, lead?: string): UiSt
     config: ui.config,
     napped,
     log: [...ui.log, ...lines].slice(-LOG_LIMIT),
+    latest: { id: (ui.latest?.id ?? 0) + 1, before: ui.game, events: result.events },
+    actions: [...ui.actions, action],
   }
 }
 
@@ -85,20 +99,27 @@ export function uiReducer(ui: UiState, action: Action): UiState {
   const color = currentColor(ui.game)
   switch (action.type) {
     case 'draw':
-      return withLog(ui, drawCard(ui.game), color)
+      return withLog(ui, action, drawCard(ui.game), color)
     case 'play':
-      return withLog(ui, playMove(ui.game, action.move), color, moveLabel(action.move) + '.')
+      return withLog(
+        ui,
+        action,
+        playMove(ui.game, action.move),
+        color,
+        moveLabel(action.move) + '.',
+      )
     case 'pass':
-      return withLog(ui, passTurn(ui.game), color)
+      return withLog(ui, action, passTurn(ui.game), color)
     case 'snooze':
-      return withLog(ui, snoozeTurn(ui.game), color)
+      return withLog(ui, action, snoozeTurn(ui.game), color)
   }
 }
 
-/** The next action for a bot-controlled turn, or null if the game is over. */
+/** The next action for a bot-controlled turn, or null if the game is over. Bots may snooze. */
 export function botAction(game: GameState, bot: Bot): Action | null {
   if (game.phase === 'over') return null
   if (game.phase === 'draw') return { type: 'draw' }
+  if (bot.snooze?.(game)) return { type: 'snooze' }
   const moves = legalMoves(game)
   return moves.length === 0 ? { type: 'pass' } : { type: 'play', move: bot(game, game.card!) }
 }

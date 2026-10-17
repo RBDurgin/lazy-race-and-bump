@@ -44,6 +44,11 @@ export const LAZY_RULES: readonly { key: keyof Settings; name: string; text: str
 export const BOT_LEVELS: readonly { key: BotLevel; name: string; text: string }[] = [
   { key: 'easy', name: 'Easy', text: 'Picks any legal move at random.' },
   { key: 'medium', name: 'Medium', text: 'Goes for bumps and progress, and dodges danger.' },
+  {
+    key: 'hard',
+    name: 'Hard',
+    text: 'Counts cards, plays the race in turns not steps, and knows when to snooze.',
+  },
 ]
 
 /** `red-0` → `Red 1`. */

@@ -50,7 +50,7 @@ When planning is approved, the first step is to save this plan as `docs/PLAN.md`
 
 - **Easy:** picks a random legal move.
 - **Medium:** scores each move with a heuristic: +bump, +reach safety/home, +leave Start, −end next to an opponent, −land on a couch.
-- **Hard (stretch goal):** Medium, plus one move of lookahead over likely opponent cards.
+- **Hard (stretch goal, done):** planned as Medium plus one move of lookahead over likely opponent cards. Lookahead turned out to add nothing (even a Medium that peeks at the next card doesn't win more), so Hard instead judges positions by a solved solo race table (expected turns to finish, not steps), counts cards, prices in the `Bump!` threat, and snoozes when every move hurts.
 
 ---
 
@@ -103,7 +103,7 @@ When planning is approved, the first step is to save this plan as `docs/PLAN.md`
 **Phase 5: Polish and ship**
 
 - Pawn movement animations, nap and bump effects, optional sounds, responsive layout, `localStorage` for settings.
-- GitHub Pages deploy. Stretch goals: Hard bot, a game replay built from the seeded event log.
+- GitHub Pages deploy. Stretch goals (done): Hard bot, a game replay built from the seed and the list of actions, with a shareable link.
 
 ---
 

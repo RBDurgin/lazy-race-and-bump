@@ -67,9 +67,23 @@ main {
   padding: 16px;
 }
 
+header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 header h1 {
   margin: 0;
   font-size: 1.6rem;
+}
+
+.icon-button {
+  flex: none;
+  padding: 6px 10px;
+  font-size: 1.1rem;
+  line-height: 1;
 }
 
 .tagline {
@@ -195,6 +209,24 @@ legend {
 @media (max-width: 800px) {
   .game {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 520px) {
+  header h1 {
+    font-size: 1.3rem;
+  }
+
+  .tagline {
+    font-size: 0.9rem;
+  }
+
+  .panel {
+    padding: 12px;
+  }
+
+  .event-log ol {
+    max-height: 200px;
   }
 }
 
@@ -379,6 +411,126 @@ legend {
   }
 }
 
+/* Effects */
+.burst {
+  pointer-events: none;
+}
+
+.burst-body {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: 700ms ease-out both;
+}
+
+.burst-bump .burst-body {
+  animation-name: burst-pop;
+}
+
+.burst-bump polygon {
+  fill: var(--bump);
+  stroke: var(--panel);
+  stroke-width: 0.04;
+}
+
+.burst-bump text {
+  fill: #fff;
+  font-size: 0.2px;
+  font-weight: 800;
+  text-anchor: middle;
+  dominant-baseline: middle;
+}
+
+.burst-home .burst-body {
+  animation-name: burst-ring;
+  animation-duration: 900ms;
+}
+
+.burst-home circle {
+  fill: none;
+  stroke: var(--good);
+  stroke-width: 0.06;
+}
+
+.burst-nap .burst-body {
+  animation-name: burst-float;
+  animation-duration: 1100ms;
+}
+
+.burst-nap text {
+  fill: var(--couch);
+  stroke: var(--panel);
+  stroke-width: 0.06;
+  paint-order: stroke;
+  font-size: 0.45px;
+  font-style: italic;
+  font-weight: 800;
+  text-anchor: middle;
+}
+
+@keyframes burst-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.3) rotate(-20deg);
+  }
+  25% {
+    opacity: 1;
+    transform: scale(1.15) rotate(0deg);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.1);
+  }
+}
+
+@keyframes burst-ring {
+  from {
+    opacity: 1;
+    transform: scale(0.4);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.4);
+  }
+}
+
+@keyframes burst-float {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0);
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(0.3px, -0.9px);
+  }
+}
+
+.card-dealt {
+  animation: deal 260ms ease-out;
+}
+
+@keyframes deal {
+  from {
+    opacity: 0;
+    transform: translateY(-12px) rotate(-4deg) scale(0.92);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
 /* Turn panel */
 .card {
   display: grid;
@@ -413,6 +565,29 @@ legend {
 .card-text {
   font-size: 0.82rem;
   color: var(--muted);
+}
+
+/* Below the base card rules so it wins. */
+@media (max-width: 520px) {
+  /* A compact, sideways card so the controls sit closer to the board. */
+  .card {
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    justify-items: start;
+    gap: 12px;
+    width: 100%;
+    min-height: 0;
+    padding: 8px 14px;
+    text-align: left;
+  }
+
+  .card-back {
+    height: 64px;
+  }
+
+  .card-value {
+    font-size: 2rem;
+  }
 }
 
 .deck-count {
@@ -477,4 +652,58 @@ legend {
 .tone-good {
   color: var(--good);
   font-weight: 600;
+}
+
+/* Replay */
+.notice {
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--red-tint);
+}
+
+.setup > .row {
+  margin-top: 8px;
+}
+
+.scrubber {
+  width: 100%;
+  margin: 12px 0 0;
+  accent-color: var(--accent);
+}
+
+.replay-panel .deck-count {
+  margin-top: 4px;
+}
+
+.replay-controls {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+}
+
+.replay-controls button {
+  padding: 8px 0;
+}
+
+.replay-panel .speed {
+  margin-top: 10px;
+  justify-content: center;
+}
+
+.replay-panel .speed button {
+  padding: 4px 12px;
+  font-size: 0.9rem;
+}
+
+.replay-panel .speed button[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--blue-tint);
+}
+
+.replay-actions {
+  margin-top: 12px;
+}
+
+.replay-actions button {
+  flex: 1;
 }

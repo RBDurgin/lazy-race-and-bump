@@ -1,9 +1,11 @@
-// Bot-vs-bot benchmark: Medium should clearly beat Easy (docs/PLAN.md, Phase 4).
+// Bot-vs-bot benchmarks: Medium should clearly beat Easy (docs/PLAN.md, Phase 4), and Hard
+// should beat Medium. The seeds are fixed, so these are regression checks, not coin flips.
 import { describe, expect, it } from 'vitest'
 import { BASE_SETTINGS } from '../engine/game'
 import type { Settings } from '../engine/types'
 import { playBots } from './arena'
 import { easyBot } from './easy'
+import { hardBot } from './hard'
 import { mediumBot } from './medium'
 
 const ALL_LAZY: Settings = { naps: true, couches: true, snooze: true }
@@ -43,4 +45,22 @@ describe.each([
       expect(wins / GAMES).toBeGreaterThan(0.4) // a fair share would be 25%
     },
   )
+})
+
+describe.each([
+  ['base rules', BASE_SETTINGS, 0.56],
+  ['all lazy rules', ALL_LAZY, 0.52],
+])('Hard vs. Medium, %s', (_, settings, floor) => {
+  // The game is mostly luck: two Medium bots with different weights split games 50/50, and even
+  // a Medium that peeks at the next card doesn't do better. Hard's edge is real but small.
+  it('wins more than half of 2-player games', { timeout: 60_000 }, () => {
+    const games = 2000
+    let wins = 0
+    for (let seed = 1; seed <= games; seed++) {
+      const bots =
+        seed % 2 ? { red: hardBot, yellow: mediumBot } : { red: mediumBot, yellow: hardBot }
+      if (playBots(seed, bots, settings).winner === (seed % 2 ? 'red' : 'yellow')) wins++
+    }
+    expect(wins / games).toBeGreaterThan(floor)
+  })
 })

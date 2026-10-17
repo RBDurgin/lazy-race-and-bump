@@ -21,10 +21,10 @@ interface TurnPanelProps {
   onSnooze: () => void
 }
 
-function CardFace({ card }: { card: Card | null }) {
+export function CardFace({ card }: { card: Card | null }) {
   if (!card) return <div className="card card-back" aria-label="No card drawn" />
   return (
-    <div className="card">
+    <div className="card card-dealt">
       <span className="card-value">{card}</span>
       <span className="card-text">{CARD_TEXT[card]}</span>
     </div>
@@ -54,7 +54,8 @@ export function TurnPanel(props: TurnPanelProps) {
         <span className="swatch" style={{ background: `var(--${color})` }} />
         {whose}
       </h2>
-      <CardFace card={game.card} />
+      {/* Keyed on the draw, so each new card plays the deal animation. */}
+      <CardFace key={`${game.turn}-${game.drawPile.length}-${game.card}`} card={game.card} />
       <p className="deck-count">{game.drawPile.length} cards left in the draw pile</p>
 
       {isHumanTurn && game.phase === 'draw' && (
