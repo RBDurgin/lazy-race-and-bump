@@ -74,5 +74,6 @@ describe('hardBot', () => {
       return state
     }
     for (let seed = 1; seed <= 20; seed++) expect(play(seed)).toEqual(play(seed))
-  })
+    // 40 full Hard-bot games: past Vitest's 5s default on slower machines.
+  }, 30_000)
 })
